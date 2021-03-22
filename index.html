@@ -1,86 +1,59 @@
-<html><head>
-<meta http-equiv="content-type" content="text/html; charset=UTF-8">
-        <title>Image Model - Teachable Machines</title>
-        <!-- base href="https://teachablemachine.withgoogle.com/" -->
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, user-scalable=yes">
-        <link rel="stylesheet" href="MY%20EXPRESIONS_files/style.css">
-        <script src="MY%20EXPRESIONS_files/cbgapi.loaded_1" async=""></script><script src="MY%20EXPRESIONS_files/cbgapi.loaded_0" async=""></script><script type="text/javascript" async="" src="MY%20EXPRESIONS_files/analytics.js"></script><script type="text/javascript" src="MY%20EXPRESIONS_files/api.js" gapi_processed="true"></script>
-        <link rel="shortcut icon" href="https://teachablemachine.withgoogle.com/assets/img/favicon.png">
+<div>Teachable Machine Image Model</div>
+<button type="button" onclick="init()">Start</button>
+<div id="webcam-container"></div>
+<div id="label-container"></div>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+<script type="text/javascript">
+    // More API functions here:
+    // https://github.com/googlecreativelab/teachablemachine-community/tree/master/libraries/image
 
-        <!-- Primary Meta Tags -->
-        <meta name="title" content="Teachable Machine">
-        <meta name="description" content="Train a computer to recognize your own images, sounds, &amp; poses.
-        A fast, easy way to create machine learning models for your sites, apps, and more – no expertise or coding required.">
+    // the link to your model provided by Teachable Machine export panel
+    const URL = "./my_model/";
 
-        <!-- Open Graph / Facebook -->
-        <meta property="og:type" content="website">
-        <meta property="og:url" content="https://teachablemachine.withgoogle.com/">
-        <meta property="og:title" content="Teachable Machine">
-        <meta property="og:description" content="Train a computer to recognize your own images, sounds, &amp; poses.
-        A fast, easy way to create machine learning models for your sites, apps, and more – no expertise or coding required.">
-        <meta property="og:image" content="https://teachablemachine.withgoogle.com/assets/img/Hero_image_16x9.jpg">
+    let model, webcam, labelContainer, maxPredictions;
 
-        <!-- Twitter -->
-        <meta property="twitter:card" content="summary_large_image">
-        <meta property="twitter:url" content="https://teachablemachine.withgoogle.com/">
-        <meta property="twitter:title" content="Teachable Machine">
-        <meta property="twitter:description" content="Train a computer to recognize your own images, sounds, &amp; poses.
-        A fast, easy way to create machine learning models for your sites, apps, and more – no expertise or coding required.">
-        <meta property="twitter:image" content="https://teachablemachine.withgoogle.com/assets/img/Hero_image_16x9.jpg">
-        <style>
-            body, html {
-                height: 100%;
-            }
+    // Load the image model and setup the webcam
+    async function init() {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
 
-            tm-classifier-drawer .error-message {
-                font-weight: bold;
-                color: #E05534;
-            }
-        </style>
-	<style>.picker-dialog-frame{width:100%;height:100%;border:0;overflow:hidden}.picker-dialog-bg{z-index:1000}.picker-dialog,.picker-dialog-bg{position:absolute;top:0;left:0;background-color:#fff}.picker-dialog{border:1px solid #acacac;width:auto;padding:0;z-index:1001;overflow:auto;box-shadow:0 4px 16px rgba(0,0,0,.2)}.picker-dialog-content{font-size:0;padding:0}.picker-dialog-buttons,.picker-dialog-title{display:none}</style></head>
-	<body><!---->
-        <style tabindex="-1" aria-hidden="true">
-        tm-snippet {
-            margin-top: 10px;
-            width: 100%;
-            min-height: 100px;
+        // load the model and metadata
+        // Refer to tmImage.loadFromFiles() in the API to support files from a file picker
+        // or files from your local hard drive
+        // Note: the pose library adds "tmImage" object to your window (window.tmImage)
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        // Convenience function to setup a webcam
+        const flip = true; // whether to flip the webcam
+        webcam = new tmImage.Webcam(200, 200, flip); // width, height, flip
+        await webcam.setup(); // request access to the webcam
+        await webcam.play();
+        window.requestAnimationFrame(loop);
+
+        // append elements to the DOM
+        document.getElementById("webcam-container").appendChild(webcam.canvas);
+        labelContainer = document.getElementById("label-container");
+        for (let i = 0; i < maxPredictions; i++) { // and class labels
+            labelContainer.appendChild(document.createElement("div"));
         }
-        tm-hamburger-menu {
-            position: fixed;
-            top: 0;
-            left: 0;
-            z-index: 1000;
+    }
+
+    async function loop() {
+        webcam.update(); // update the webcam frame
+        await predict();
+        window.requestAnimationFrame(loop);
+    }
+
+    // run the webcam image through the image model
+    async function predict() {
+        // predict can take in an image, video or canvas html element
+        const prediction = await model.predict(webcam.canvas);
+        for (let i = 0; i < maxPredictions; i++) {
+            const classPrediction =
+                prediction[i].className + ": " + prediction[i].probability.toFixed(2);
+            labelContainer.childNodes[i].innerHTML = classPrediction;
         }
-
-        #footer {
-            position: fixed;
-            display: flex;
-            align-items: center;
-            flex-wrap: nowrap;
-            bottom: 4px;
-            right: 4px;
-        }
-
-        #debug-info {
-            opacity: 0.2;
-            user-select: text;
-            font-size: 13px;
-        }
-
-        </style>
-        <tm-hamburger-menu disabledriveview="" disablesignout="" tabindex="-1" aria-hidden="true"></tm-hamburger-menu>
-        <tm-modal-drive></tm-modal-drive>
-        <tm-onboard-modal id="onboard-modal" aria-hidden="true" style="display: none;"></tm-onboard-modal>
-        <tm-snackbar id="snackbar" tabindex="-1" aria-hidden="true"></tm-snackbar>
-        <div id="route-container" tabindex="-1" aria-hidden="true"><tm-teachable-image-app id="tmApp" debug="0"></tm-teachable-image-app></div>
-        <tm-viz id="viz" confusionstate="hidden" accuracystate="hidden" tabindex="-1" aria-hidden="true"></tm-viz>
-
-        <div id="footer" tabindex="-1" aria-hidden="true">
-            <tm-language-select></tm-language-select>
-            <div id="debug-info">
-                release-2-3-1 - 2.3.1#3c7749 - 99
-            </div>
-        </div>
-        <input id="zip-file-input" style="display: none" type="file" accept="zip" tabindex="-1" aria-hidden="true">
-    <!----><iframe id="apiproxy05eb70ec6c5bc96d81d11d0a1060ae738b804ada0.3368539368" name="apiproxy05eb70ec6c5bc96d81d11d0a1060ae738b804ada0.3368539368" style="width: 1px; height: 1px; position: absolute; top: -100px; display: none;" src="MY%20EXPRESIONS_files/proxy.htm" tabindex="-1" aria-hidden="true"></iframe><iframe id="ssIFrame_google" sandbox="allow-scripts allow-same-origin allow-storage-access-by-user-activation" style="position: absolute; width: 1px; height: 1px; inset: -9999px; display: none;" aria-hidden="true" frame-border="0" src="MY%20EXPRESIONS_files/iframe.htm" tabindex="-1"></iframe></body></html>
+    }
+</script>
